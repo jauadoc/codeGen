@@ -55,7 +55,7 @@
 			<div class="panel3 panel">
 				
 			</div>
-			<div class="box choosed">
+			<div class="box choosed" id="box">
 				box
 			</div>
 		</div>
@@ -63,16 +63,55 @@
 </body>
 <script src="http://cdn.bootcss.com/jquery/3.0.0/jquery.js"></script>
 <script type="text/javascript">
+	//容器对象
+	//容器名，容器位置对象，子容器数组，容器的层级（box为1级/0级）
+	var Container = {
+		name : "",
+		ctnPosi : {},
+		children : [],
+		level : "",
+		target,
+		setName : function(name){
+			this.name = name;
+		},
+		setCtnPosi : function(left,right,top,bottom){
+			var tempCtnPosi = Object.create(CtnPosi);
+			tempCtnPosi.setPosi(left,right,top,bottom);
+			this.ctnPosi = tempCtnPosi;
+		},
+		setLevel : function(level){
+			this.level = level;
+		},
+		addChild : function(child){
+			this.children.push(child)
+		}
+	}
+
+	//位置对象[bug]setPosi方法未找到
+	var CtnPosi = {
+		left : "",
+		right : "",
+		top : "",
+		bottom : "",
+		setPosi : function(left,right,top,bottom){
+			this.left = left;
+			this.right = right;
+			this.top = top;
+			this.bottom = bottom;
+		}
+	}
+
+
 	$(".choose").bind("mousedown",mousedown);
 	$(".choose").bind("mouseup",mouseup);
 	$(".choose").bind("mousemove",mousemove);
 	//根容器
 	var rootCtn = Object.create(Container);
-	xxx
-	xxx
-	xxx
-	xxx
-	xxx
+	rootCtn.setLevel(0);
+	rootCtn.setName("root");
+	var rootBox = document.getElementById("box");
+	rootCtn.setCtnPosi(rootBox.getBoundingClientRect().left,rootBox.getBoundingClientRect().right,rootBox.getBoundingClientRect().top,rootBox.getBoundingClientRect().bottom);
+	
 
 	//div位置
 	var baseX,baseY;
@@ -98,10 +137,6 @@
 		//2.记录点击时的鼠标位置
 		beforeX = e.clientX;
 		beforeY = e.clientY;
-			
-
-
-
 		
 	}
 
@@ -120,25 +155,37 @@
 		//3.遍历当前容器，获取其位置，判断当前位置是否在其内，在其内则获取在其内的父容器对象。
 			//创建当前组件的位置对象
 		var currPosi = Object.create(CtnPosi);
-		currPosi.setCtnPosi(target.style.left,target.style.right,target.style.top,target.style.bottom);
-			//递归遍历容器的位置对象，进行比较，找到对应的父容器数组
-		var currFarthers = getFatherCantainer(rootCtn.children);
-			//遍历符合的父容器，返回level最低的父容器对象[未完成]
+		currPosi.setPosi(target.getBoundingClientRect().left,target.getBoundingClientRect().right,target.getBoundingClientRect().top,target.getBoundingClientRect().bottom);
+			//递归遍历容器的位置对象，进行比较，找到对应的父容器
+		var currFarthers = getFatherCantainer(rootCtn,currPosi);
+			//遍历符合的父容器，返回level最低的父容器对象[完成]
 		var lowerFather;
-		for(currFarthers xxxx){
-			if(lowerFather.level>currFarthers[x].level){
-				lowerFather = currFarthers[x];
+		//如果当前组件在某个容器中进行组装和添加
+		if(currFarthers.length>0){
+			for(var i=0;i<currFarthers.length;i++){
+				if(i==0){
+					lowerFather = currFarthers[i];
+				}else{
+					if(lowerFather.level>currFarthers[i].level){
+						lowerFather = currFarthers[i];
+					}
+				}
 			}
+
+			//组装当前组件容器对象
+			var currCtn = Object.create(Container);
+			currCtn.setName("xxx组件");
+			currCtn.setLevel(parseInt(lowerFather.level)+1);
+			currCtn.setCtnPosi(currPosi);
+			currCtn.target = target;
+			//将当前组件容器添加到父容器中
+			lowerFather.addChild(currCtn);
 		}
+		//测试用例，将div移动到父容器中，并将div销毁，并在父容器中添加对应div
+		//var childrenDiv = $(lowerFather.children[0].target);
+		//$("#box").html($(childrenDiv).html());
+		//$(childrenDiv).hide();
 
-		//组装当前组件容器对象
-		var currCtn = Object.create(Container);
-		currCtn.setName("xxx组件");
-		currCtn.setLevel(parseInt(lowerFather.level)+1);
-		currCtn.setPosi(currPosi);
-
-		//将当前组件容器添加到父容器中
-		lowerFather.addChild(currCtn);
 	}
 
 	//鼠标悬停触发
@@ -153,10 +200,6 @@
 			//2.当模块处于其他模块时将处于的模块背景高亮，当前模块背景不同色高亮
 			$(target).addClass("onChoose");
 
-
-
-
-
 			//3.
 			$(".panel1").html("currMouseX:"+currMouseX+",currMouseY:"+currMouseY);
 			$(".panel2").html("beforeX:"+beforeX+",beforeY:"+beforeY);
@@ -167,12 +210,15 @@
 		}
 	}
 
-	//递归遍历所有children，如果有符合的父容器则返回[未完成]
-	function getFatherCantainer(children,currPosi){
+	//递归遍历所有children，如果有符合的父容器则返回[完成]
+	function getFatherCantainer(fatherCtn,currPosi){
 		var fathers = [];
-		if(isInPosi(childrenxxxxx.ctnPosi,currPosi)){
-			fathers.push(xxxPosi);
-			getFatherCantainer(children.xxCtn,currPosi);
+		if(isInPosi(fatherCtn.ctnPosi,currPosi)){
+			fathers.push(fatherCtn);
+			for(var i=0;i<fatherCtn.children.length;i++){
+				var tempFathers = getFatherCantainer(fatherCtn.children[i],currPosi);
+				fathers.concat(tempFathers);
+			}
 		}
 		return fathers;
 	}
@@ -183,44 +229,13 @@
 	//当将组件移动并且松开后，获取当前左顶点位x,y，遍历所有容器对象及子容器对象，如果x&y在某个容器内（x,y在其中position中），则创建该组件的容器对象，并将该组件的容器对象添加到所在容器的chldren中（选择最底层的容器，加入其中）
 
 
-	//容器对象
-	//容器名，容器位置对象，子容器数组，容器的层级（box为1级/0级）
-	var Container = {
-		name : "",
-		ctnPosi : {},
-		children : [],
-		level : "",
-		setName : function(name){
-			this.name = name;
-		},
-		setCtnPosi : function(ctnPosi){
-			this.ctnPosi = ctnPosi;
-		}
-		setLevel : function(level){
-			this.level = level;
-		},
-		addChild : function(child){
-			this.children.push(child)
-		}
-	}
-
-	//位置对象
-	var CtnPosi = {
-		left : "",
-		right : "",
-		top : "",
-		bottom : "",
-		setPosi(left,right,top,bottom){
-			this.left = left;
-			this.right = right;
-			this.top = top;
-			this.bottom = bottom;
-		}
-	}
-
 	//判断当前位置是否在容器的位置中[未完成]
-	function isInPosi(currPosi, ctnPosi){
-
+	function isInPosi(fatherPosi, ctnPosi){
+		if(fatherPosi.left<ctnPosi.left && fatherPosi.right>ctnPosi.left && fatherPosi.top<ctnPosi.top && fatherPosi.bottom>ctnPosi.top){
+			return true;
+		}
+		return false;
 	}
+
 </script>
 </html>
