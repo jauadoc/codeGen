@@ -32,8 +32,10 @@
 	.right{margin-left: 200px;}
 	
 	.panel{border: solid 1px black; height: 16px;width: 500px;margin-left: 500px;}
-	.choose{height: 100px;position: relative;border:solid 1px black;}
+	.left .choose{height: 100px;width: 130px; position: relative;border:solid 1px black;display: inline-block;}
 	.clone{}
+	.a{width: 30px;height: 30px;background: red;display: inline-block;}
+	.b{width: 30px;height: 30px;background: blue;display: inline-block;}
 	.onChoose{background: rgba(0,153,255,0.3);}
 	.choose:hover{cursor: move;z-index: 999;}
 	.box{width: 200px;height: 200px; background: #DDD;position: relative;top: 30px;left: 200px;}
@@ -42,6 +44,9 @@
 	<div class="parent">
 		<div class="left">
 			<div class="choose a" style="top: 100px; left: 100px; ">
+				choose
+			</div>
+			<div class="choose b" style="top: 100px; left: 100px; ">
 				choose
 			</div>
 		</div>
@@ -84,6 +89,9 @@
 		},
 		addChild : function(child){
 			this.children.push(child)
+		},
+		getCtnPosi : function(){
+			return ctnPosi;
 		}
 	}
 
@@ -98,6 +106,9 @@
 			this.right = right;
 			this.top = top;
 			this.bottom = bottom;
+		},
+		getPosi : function(){
+			return this.right+":"+this.bottom+":"+this.left+""+this.top;
 		}
 	}
 
@@ -111,7 +122,8 @@
 	rootCtn.setName("root");
 	var rootBox = document.getElementById("box");
 	rootCtn.setCtnPosi(rootBox.getBoundingClientRect().left,rootBox.getBoundingClientRect().right,rootBox.getBoundingClientRect().top,rootBox.getBoundingClientRect().bottom);
-	
+	rootCtn.target = $(rootBox);
+	$(rootBox).css("zIndex",rootCtn.level);
 
 	//div位置
 	var baseX,baseY;
@@ -150,8 +162,6 @@
 
 		//1.去除高亮
 		$(target).removeClass("onChoose");
-		//2.添加已固定位置class标志
-		$(target).addClass("choosed");
 		//3.遍历当前容器，获取其位置，判断当前位置是否在其内，在其内则获取在其内的父容器对象。
 			//创建当前组件的位置对象
 		var currPosi = Object.create(CtnPosi);
@@ -181,11 +191,17 @@
 			//将当前组件容器添加到父容器中
 			lowerFather.addChild(currCtn);
 		}
-		//测试用例，将div移动到父容器中，并将div销毁，并在父容器中添加对应div
-		//var childrenDiv = $(lowerFather.children[0].target);
-		//$("#box").html($(childrenDiv).html());
-		//$(childrenDiv).hide();
 
+		//将最后添加的模块取出，并添加到div中 ---半侧式
+		var childrenDiv = $(lowerFather.children[lowerFather.children.length-1].target);
+		//将模块固定并添加到当前模块中
+		$(childrenDiv).addClass("choosed");
+		$(childrenDiv).removeClass("choose");
+		$(lowerFather.target).append($(childrenDiv));
+		//将模块添加后设置其z-index高于其父容器，是的其他模块可以放入该模块中
+		$(childrenDiv).css("zIndex",lowerFather.children[lowerFather.children.length-1].level);
+		//将当前容器对象的位置重新设置。
+		lowerFather.children[lowerFather.children.length-1].setCtnPosi($(childrenDiv).offset().left,$(childrenDiv).offset().left+$(childrenDiv).width(),$(childrenDiv).offset().top,$(childrenDiv).offset().top+$(childrenDiv).height());
 	}
 
 	//鼠标悬停触发
@@ -210,12 +226,13 @@
 		}
 	}
 
-	//递归遍历所有children，如果有符合的父容器则返回[完成]
+	//递归遍历所有children，如果有符合的父容器则返回[bug递归遍历时死循环]
 	function getFatherCantainer(fatherCtn,currPosi){
 		var fathers = [];
 		if(isInPosi(fatherCtn.ctnPosi,currPosi)){
 			fathers.push(fatherCtn);
 			for(var i=0;i<fatherCtn.children.length;i++){
+				alert(fatherCtn.children[i].ctnPosi.getPosi());
 				var tempFathers = getFatherCantainer(fatherCtn.children[i],currPosi);
 				fathers.concat(tempFathers);
 			}
@@ -229,7 +246,7 @@
 	//当将组件移动并且松开后，获取当前左顶点位x,y，遍历所有容器对象及子容器对象，如果x&y在某个容器内（x,y在其中position中），则创建该组件的容器对象，并将该组件的容器对象添加到所在容器的chldren中（选择最底层的容器，加入其中）
 
 
-	//判断当前位置是否在容器的位置中[未完成]
+	//判断当前位置是否在容器的位置中[完成]
 	function isInPosi(fatherPosi, ctnPosi){
 		if(fatherPosi.left<ctnPosi.left && fatherPosi.right>ctnPosi.left && fatherPosi.top<ctnPosi.top && fatherPosi.bottom>ctnPosi.top){
 			return true;
